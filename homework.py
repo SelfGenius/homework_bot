@@ -1,11 +1,12 @@
-import requests
+import logging
 import os
 import time
-import logging
-from logging.handlers import RotatingFileHandler
-from dotenv import load_dotenv
-import telegram
 from http import HTTPStatus
+from logging.handlers import RotatingFileHandler
+
+import requests
+import telegram
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -14,16 +15,12 @@ logging.basicConfig(
     filename='main.log',
     format='%(funcName)s, %(lineno)s, %(levelname)s, %(message)s',
     encoding='UTF-8',
-    filemode='w'
-)
+    filemode='w',)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler('my_logger.log',
-                              encoding='UTF-8',
-                              maxBytes=50000000,
-                              backupCount=5
-                              )
+                              encoding='UTF-8')
 logger.addHandler(handler)
 formatter = logging.Formatter(
     '%(asctime)s, %(levelname)s, %(message)s, %(funcName)s, %(lineno)s'
@@ -47,11 +44,7 @@ HOMEWORK_STATUSES = {
 
 
 def send_message(bot, message):
-    """Отправляет сообщение в Telegram чат.
-    Чат задан переменной окружения TELEGRAM_CHAT_ID.
-    Принимает на вход два параметра: экземпляр класса Bot и
-    строку с текстом сообщения.
-    """
+    """Отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info('Сообщение в чат {TELEGRAM_CHAT_ID}: {message}')
@@ -60,11 +53,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(current_timestamp):
-    """Делает запрос к единственному эндпоинту API-сервиса.
-    В качестве параметра функция получает временную метку.
-    В случае успешного запроса должна вернуть ответ API,
-    преобразовав его из формата JSON к типам данных Python.
-    """
+    """Делает запрос к единственному эндпоинту API-сервиса."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     try:
@@ -88,12 +77,7 @@ def get_api_answer(current_timestamp):
 
 def check_response(response):
     """Проверяет ответ API на корректность.
-    В качестве параметра функция получает ответ API.
-    Ответ приведен к типам данных Python.
-    Если ответ API соответствует ожиданиям, то функция должна вернуть
-    список домашних работ (он может бытьnи пустым), доступный в ответе
-    API по ключу 'homeworks'
-    """
+    В качестве параметра функция получает ответ API."""
     if type(response) is not dict:
         raise TypeError('Ответ API отличен от словаря')
     try:
@@ -110,11 +94,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Извлекает из информации о конкретной домашней работе статус этой работы.
-    В качестве параметра функция получает всего один элемент из списка домашних
-    работ. В случае успеха, функция возвращает подготовленную для отправки в
-    Telegram строку, содержащую один из вердиктов словаря HOMEWORK_STATUSES.
-    """
+    """Извлекает информацию о статусе домашней работе статус."""
     if 'homework_name' not in homework:
         raise KeyError('Отсутствует ключ "homework_name" в ответе API')
     if 'status' not in homework:
@@ -128,10 +108,7 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """Проверяет доступность переменных окружения, необходимых для работы.
-    Если отсутствует хотя бы одна переменная окружения — функция
-    должна вернуть False, иначе — True.
-    """
+    """Проверяет доступность переменных окружения."""
     if all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
         return True
 
