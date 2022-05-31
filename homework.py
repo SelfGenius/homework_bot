@@ -8,6 +8,7 @@ import requests
 import telegram
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 logging.basicConfig(
@@ -76,8 +77,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    """Проверяет ответ API на корректность.
-    В качестве параметра функция получает ответ API."""
+    """Проверяет ответ API на корректность."""
     if type(response) is not dict:
         raise TypeError('Ответ API отличен от словаря')
     try:
