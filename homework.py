@@ -65,7 +65,7 @@ def check_response(response):
     if homeworks_list is None:
         raise Exception('В ответе API нет словаря с домашками')
     if len(homeworks_list) == 0:
-        raise Exception(f'За последнее время домашек нет')
+        raise Exception('За последнее время домашек нет')
     if not isinstance(homeworks_list, list):
         raise Exception('Ответ API отличен от списка')
     return homeworks_list
@@ -89,13 +89,14 @@ def check_tokens():
     """Проверяет доступность переменных окружения."""
     return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
+
 # маин начал делать
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logger.critical('Отсутствуют одна или несколько переменных окружения')
         sys.exit('Отсутствуют одна или несколько переменных окружения')
-
+    # дальше изменеий нет
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
 
