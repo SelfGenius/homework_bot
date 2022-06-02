@@ -99,10 +99,8 @@ def main():
     # дальше изменеий нет
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
-
     STATUS = ''
     ERROR_CACHE_MESSAGE = ''
-
     while True:
         try:
             response = get_api_answer(current_timestamp)
