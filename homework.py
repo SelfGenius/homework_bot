@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import time
@@ -6,8 +7,6 @@ from http import HTTPStatus
 import requests
 import telegram
 from dotenv import load_dotenv
-
-import logging
 
 load_dotenv()
 
@@ -39,36 +38,33 @@ def send_message(bot, message):
 
 def get_api_answer(current_timestamp):
     """Делает запрос к единственному эндпоинту API-сервиса."""
-    timestamp = current_timestamp or int(time.time())
-    kwargs = dict(
+    api_params = dict(
         url=ENDPOINT,
         headers=HEADERS,
-        params={'from_date': timestamp}
+        params={'from_date': current_timestamp}
     )
-    try:
-        homework_statuses = requests.get(**kwargs)
-
-        if homework_statuses.status_code != HTTPStatus.OK:
-            status_code = homework_statuses.status_code
-            raise Exception(f'Ошибка {status_code}')
-        return homework_statuses.json()
-    except Exception as error:
-        logging.error(error, exc_info=True)
-        raise Exception(f'Ошибка при получении ответа с сервера: {error}')
+    homework = requests.get(**api_params)
+    if homework.status_code == HTTPStatus.OK:
+        return homework.json()
+    raise Exception(f'Ошибка при получении ответа с сервера. '
+                    f'Статус код ответа сервера {homework.status_code}. '
+                    f'Парамметры запроса - {api_params}.')
 
 
 def check_response(response):
     """Проверяет ответ API на корректность."""
     if not isinstance(response, dict):
         raise TypeError('Ответ API отличен от словаря')
-    homeworks_list = response.get('homeworks')
-    if homeworks_list is None:
-        raise Exception('В ответе API нет словаря с домашками')
-    if len(homeworks_list) == 0:
-        raise Exception('За последнее время домашек нет')
-    if not isinstance(homeworks_list, list):
-        raise Exception('Ответ API отличен от списка')
-    return homeworks_list
+    homeworks = response.get('homeworks')
+    if homeworks is None:
+        raise KeyError('В ответе API нет словаря с домашками')
+    current_date = response.get('current_date')
+    if not isinstance(current_date, int):
+        raise TypeError('В ответе API нет данных о времени')
+    logging.debug(f"Время последнего запроса к серверу: {current_date}")
+    if not isinstance(homeworks, list):
+        raise TypeError('Ответ API отличен от списка')
+    return homeworks
 
 
 def parse_status(homework):
@@ -77,8 +73,6 @@ def parse_status(homework):
     if homework_name is None:
         raise KeyError('Отсутствует ключ "homework_name" в ответе API')
     homework_status = homework.get('status')
-    if homework_status is None:
-        raise KeyError('Отсутствует ключ "status" в ответе API')
     if homework_status not in HOMEWORK_VERDICTS:
         raise KeyError(f'Неизвестный статус работы: {homework_status}')
     verdict = HOMEWORK_VERDICTS[homework_status]
@@ -90,33 +84,30 @@ def check_tokens():
     return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
-# маин начал делать
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logger.critical('Отсутствуют одна или несколько переменных окружения')
         sys.exit('Отсутствуют одна или несколько переменных окружения')
-    # дальше изменеий нет
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
-    STATUS = ''
-    ERROR_CACHE_MESSAGE = ''
+    logger.info('Запуск программы')
+    info_message = (f'Привет, я твой личный ассистент.\n'
+                    f'Я буду сообщать когда проект взят на проверку и есть ли '
+                    f'замечания.\nЕсли у меня возникнут трудности, я напишу.')
+    send_message(bot, info_message)
     while True:
         try:
             response = get_api_answer(current_timestamp)
-            current_timestamp = response.get('current_date')
-            message = parse_status(check_response(response))
-            if message != STATUS:
-                send_message(bot, message)
-                STATUS = message
-            time.sleep(RETRY_TIME)
+            homework_list = check_response(response)
+            if len(homework_list) > 0:
+                send_message(bot, parse_status(homework_list[0]))
+            current_timestamp = response.get('current_date', current_timestamp)
         except Exception as error:
-            logger.error(error)
-            message_t = str(error)
-            if message_t != ERROR_CACHE_MESSAGE:
-                send_message(bot, message_t)
-                ERROR_CACHE_MESSAGE = message_t
-        time.sleep(RETRY_TIME)
+            logger.error(error, exc_info=True)
+            send_message(bot, f'Сбой в работе программы: {error}')
+        finally:
+            time.sleep(RETRY_TIME*2)
 
 
 if __name__ == '__main__':
