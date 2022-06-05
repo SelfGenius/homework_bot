@@ -92,9 +92,9 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     logger.info('Запуск программы')
-    info_message = (f'Привет, я твой личный ассистент.\n'
-                    f'Я буду сообщать когда проект взят на проверку и есть ли '
-                    f'замечания.\nЕсли у меня возникнут трудности, я напишу.')
+    info_message = ('Привет, я твой личный ассистент.\n'
+                    'Я буду сообщать когда проект взят на проверку и есть ли '
+                    'замечания.\nЕсли у меня возникнут трудности, я напишу.')
     send_message(bot, info_message)
     while True:
         try:
