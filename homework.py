@@ -107,7 +107,7 @@ def main():
             logger.error(error, exc_info=True)
             send_message(bot, f'Сбой в работе программы: {error}')
         finally:
-            time.sleep(RETRY_TIME*2)
+            time.sleep(RETRY_TIME)
 
 
 if __name__ == '__main__':
