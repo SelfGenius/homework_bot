@@ -27,13 +27,23 @@ HOMEWORK_VERDICTS = {
 }
 
 
+class ApiRequestError(Exception):
+    """Ошибка запроса."""
+
+
+class CurrentDateError(Exception):
+    """Ошибка ключа current_date."""
+
+
 def send_message(bot, message):
     """Отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, text=message)
+    except telegram.error.TelegramError(message) as error:
+        raise Exception(f'Ошибка отправки сообщения:{message}.'
+                        f'Информация об ошибке: {error}')
+    else:
         logger.info(f'Сообщение в чат {TELEGRAM_CHAT_ID}: {message}')
-    except telegram.error.TelegramError(message):
-        logger.error(f'Ошибка отправки сообщения:{message}', exc_info=True)
 
 
 def get_api_answer(current_timestamp):
@@ -43,12 +53,14 @@ def get_api_answer(current_timestamp):
         headers=HEADERS,
         params={'from_date': current_timestamp}
     )
-    homework = requests.get(**api_params)
-    if homework.status_code == HTTPStatus.OK:
+    try:
+        homework = requests.get(**api_params)
+        if homework.status_code != HTTPStatus.OK:
+            raise Exception(f'Ошибка {homework.status_code}')
         return homework.json()
-    raise Exception(f'Ошибка при получении ответа с сервера. '
-                    f'Статус код ответа сервера {homework.status_code}. '
-                    f'Парамметры запроса - {api_params}.')
+    except Exception:
+        raise ApiRequestError(f'Ошибка при получении ответа с сервера. '
+                              f'Парамметры запроса - {api_params}.')
 
 
 def check_response(response):
@@ -60,10 +72,11 @@ def check_response(response):
         raise KeyError('В ответе API нет словаря с домашками')
     current_date = response.get('current_date')
     if not isinstance(current_date, int):
-        raise TypeError('В ответе API нет данных о времени')
-    logging.debug(f"Время последнего запроса к серверу: {current_date}")
+        raise CurrentDateError('В ответе API нет данных о времени')
     if not isinstance(homeworks, list):
         raise TypeError('Ответ API отличен от списка')
+    logging.info(f"Проверка API успешно пройдена."
+                 f"Время последнего запроса к серверу: {current_date}")
     return homeworks
 
 
@@ -103,6 +116,8 @@ def main():
             if len(homework_list) > 0:
                 send_message(bot, parse_status(homework_list[0]))
             current_timestamp = response.get('current_date', current_timestamp)
+        except CurrentDateError as error:
+            logger.error(error, exc_info=True)
         except Exception as error:
             logger.error(error, exc_info=True)
             send_message(bot, f'Сбой в работе программы: {error}')
