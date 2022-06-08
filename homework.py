@@ -8,6 +8,8 @@ import requests
 import telegram
 from dotenv import load_dotenv
 
+from exceptions import MessageNotSentError, ApiRequestError, CurrentDateError
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -27,21 +29,13 @@ HOMEWORK_VERDICTS = {
 }
 
 
-class ApiRequestError(Exception):
-    """Ошибка запроса."""
-
-
-class CurrentDateError(Exception):
-    """Ошибка ключа current_date."""
-
-
 def send_message(bot, message):
     """Отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, text=message)
     except telegram.error.TelegramError(message) as error:
-        raise Exception(f'Ошибка отправки сообщения:{message}.'
-                        f'Информация об ошибке: {error}')
+        raise MessageNotSentError(f'Ошибка отправки сообщения:{message}.'
+                                  f'Информация об ошибке: {error}')
     else:
         logger.info(f'Сообщение в чат {TELEGRAM_CHAT_ID}: {message}')
 
@@ -116,7 +110,7 @@ def main():
             if len(homework_list) > 0:
                 send_message(bot, parse_status(homework_list[0]))
             current_timestamp = response.get('current_date', current_timestamp)
-        except CurrentDateError as error:
+        except (CurrentDateError, MessageNotSentError) as error:
             logger.error(error, exc_info=True)
         except Exception as error:
             logger.error(error, exc_info=True)
